@@ -5,7 +5,9 @@
 #include "duckdb/planner/expression/bound_conjunction_expression.hpp"
 #include "duckdb/transaction/transaction.hpp"
 #include "duckdb/parallel/parallel_state.hpp"
+#include "duckdb/function/table/table_scan.hpp"
 
+#include <iostream>
 #include <utility>
 
 namespace duckdb {
@@ -17,6 +19,35 @@ PhysicalTableScan::PhysicalTableScan(vector<LogicalType> types, TableFunction fu
     : PhysicalOperator(PhysicalOperatorType::TABLE_SCAN, move(types), estimated_cardinality),
       function(move(function_p)), bind_data(move(bind_data_p)), column_ids(move(column_ids_p)), names(move(names_p)),
       table_filters(move(table_filters_p)) {
+    auto data = reinterpret_cast<TableScanBindData*>(bind_data.get());
+    std::cout << "index scan: " << data->is_index_scan << std::endl;
+    if (data->is_index_scan) {
+        std::cout << "result ids: " << data->result_ids.size() << std::endl;
+    }
+    std::cout << "column ids: ";
+    for (auto & id : column_ids) {
+        std::cout << id << " ";
+    }
+    std::cout << std::endl;
+    std::cout << "names: ";
+    for (auto & name : names) {
+        std::cout << name << " ";
+    }
+    std::cout << std::endl;
+
+    if (table_filters != nullptr) {
+        std::cout << "filters: ";
+        auto & filters = table_filters->filters;
+        if (filters.empty()) {
+            std::cout << "null" << std::endl;
+        } else {
+            std::cout << std::endl;
+            for (auto & iter : filters) {
+                std::cout << iter.second->ToString(names[iter.first]) << std::endl;
+            }
+        }
+    }
+    std::cout << "cardinality: " << estimated_cardinality << std::endl;
 }
 
 class TableScanGlobalState : public GlobalSourceState {
